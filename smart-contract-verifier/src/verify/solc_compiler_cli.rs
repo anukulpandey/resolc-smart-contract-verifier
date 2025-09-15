@@ -267,16 +267,27 @@ mod types {
 
 mod serde_helpers {
     use serde::de;
+    use serde::{Deserialize, Deserializer};
 
     pub fn deserialize_abi_string<'de, D>(
         deserializer: D,
     ) -> Result<Vec<serde_json::Value>, D::Error>
     where
-        D: de::Deserializer<'de>,
+        D: Deserializer<'de>,
     {
-        let s: String = de::Deserialize::deserialize(deserializer)?;
-        serde_json::from_str(&s).map_err(de::Error::custom)
+        let val = serde_json::Value::deserialize(deserializer)?;
+    
+        if let serde_json::Value::String(s) = val {
+            // case: ABI was returned as a string containing JSON
+            serde_json::from_str(&s).map_err(serde::de::Error::custom)
+        } else if let serde_json::Value::Array(arr) = val {
+            // case: ABI is already a JSON array
+            Ok(arr)
+        } else {
+            Err(serde::de::Error::custom("invalid ABI format"))
+        }
     }
+       
 }
 
 #[cfg(test)]

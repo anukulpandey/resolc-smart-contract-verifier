@@ -47,6 +47,8 @@ pub async fn compile<C: EvmCompiler>(
         .compile(&compiler_path, &compiler_version, &compiler_input)
         .await?;
 
+    println!("[compiler] compiler_output result: {:?}", compiler_output);
+
     let modified_compiler_input = compiler_input.modified_copy();
     let modified_compiler_output = compilers
         .compile(&compiler_path, &compiler_version, &modified_compiler_input)

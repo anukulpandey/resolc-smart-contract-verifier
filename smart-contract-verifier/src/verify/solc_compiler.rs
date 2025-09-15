@@ -74,25 +74,26 @@ impl evm_compilers::EvmCompiler for SolcCompiler {
         compiler_version: &DetailedVersion,
         input: &Self::CompilerInput,
     ) -> Result<Value, Error> {
-        if compiler_version.to_semver() < &semver::Version::new(0, 4, 11) {
-            let output = solc_compiler_cli::compile_using_cli(compiler_path, input)
-                .await
-                .context("error compiling using cli")?;
-            return Ok(
-                serde_json::to_value(output).context("serializing compiler output into value")?
-            );
-        }
-        let solc = foundry_compilers_new::solc::Solc::new_with_version(
-            compiler_path,
-            compiler_version.to_semver().to_owned(),
-        );
-        let output = solc
-            .async_compile_output(input)
+        // ANUKULPANDEY always use the cli
+        // if compiler_version.to_semver() < &semver::Version::new(0, 10, 11) {
+        let output = solc_compiler_cli::compile_using_cli(compiler_path, input)
             .await
-            .context("compilation")?;
-        let output_value =
-            serde_json::from_slice(&output).context("deserializing compiler output into value")?;
+            .context("error compiling using cli")?;
+        return Ok(
+            serde_json::to_value(output).context("serializing compiler output into value")?
+        );
+        // }
+        // let solc = foundry_compilers_new::solc::Solc::new_with_version(
+        //     compiler_path,
+        //     compiler_version.to_semver().to_owned(),
+        // );
+        // let output = solc
+        //     .async_compile_output(input)
+        //     .await
+        //     .context("compilation")?;
+        // let output_value =
+        //     serde_json::from_slice(&output).context("deserializing compiler output into value")?;
 
-        Ok(output_value)
+        // Ok(output_value)
     }
 }
