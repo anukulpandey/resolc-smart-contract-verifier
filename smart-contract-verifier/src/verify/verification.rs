@@ -24,7 +24,6 @@ pub enum VerificationResult {
         creation_match: Match,
     },
 }
-
 pub fn verify_contract(
     on_chain_code: OnChainCode,
     recompiled_code: RecompiledCode,
@@ -32,33 +31,68 @@ pub fn verify_contract(
     creation_code_artifacts: &CreationCodeArtifacts,
     runtime_code_artifacts: &RuntimeCodeArtifacts,
 ) -> VerificationResult {
+    println!("Starting contract verification...");
+
     if on_chain_code.runtime.is_none() && on_chain_code.creation.is_none() {
         unreachable!("OnChainCode constructors require at least one of the code values")
     }
 
     let mut runtime_match = None;
     if let Some(on_chain_runtime_code) = &on_chain_code.runtime {
+        println!("Verifying runtime code, length: {}", on_chain_runtime_code.len());
+
         let verify_code_result = verifier_alliance::verify_runtime_code(
             on_chain_runtime_code,
             recompiled_code.runtime,
             runtime_code_artifacts,
         );
+
+        println!("Runtime verification result: {:?}", verify_code_result);
+
         runtime_match = process_verify_code_result("runtime", verify_code_result);
+
+        if runtime_match.is_some() {
+            println!("Runtime code matched successfully!");
+        } else {
+            println!("Runtime code verification failed.");
+        }
+    } else {
+        println!("No runtime code present on-chain, skipping runtime verification.");
     }
 
     let mut creation_match = None;
     if let Some(on_chain_creation_code) = &on_chain_code.creation {
+        println!("Verifying creation code, length: {}", on_chain_creation_code.len());
+
         let verify_code_result = verifier_alliance::verify_creation_code(
             on_chain_creation_code,
             recompiled_code.creation,
             creation_code_artifacts,
             compilation_artifacts,
         );
+
+        println!("Creation verification result: {:?}", verify_code_result);
+
         creation_match = process_verify_code_result("creation", verify_code_result);
+
+        if creation_match.is_some() {
+            println!("Creation code matched successfully!");
+        } else {
+            println!("Creation code verification failed.");
+        }
+    } else {
+        println!("No creation code present on-chain, skipping creation verification.");
     }
+
+    println!(
+        "Finished contract verification. Runtime match: {}, Creation match: {}",
+        runtime_match.is_some(),
+        creation_match.is_some()
+    );
 
     matches_to_verification_result(runtime_match, creation_match)
 }
+
 
 pub fn verify_blueprint_contract(
     on_chain_initcode: Vec<u8>,
