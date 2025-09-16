@@ -29,8 +29,21 @@ pub async fn compile_using_cli(
         // Start with original args from solc
         let mut solc_args = input_args.build();
 
-        // Remove solc-style optimization flags
-        solc_args.retain(|arg| arg != "--optimize" && arg != "--optimize-runs");
+        println!("input_args===={:?}", input_args);
+
+        // Remove solc-style optimization flags AND their values
+        let mut skip_next = false;
+        solc_args.retain(|arg| {
+            if skip_next {
+                skip_next = false;
+                return false; // skip the value of --optimize-runs
+            }
+            if arg == "--optimize" || arg == "--optimize-runs" {
+                skip_next = arg == "--optimize-runs"; // --optimize has no value
+                return false;
+            }
+            true
+        });
 
         // Add resolc-style optimization flag
         solc_args.push("--optimization".to_string());
@@ -307,7 +320,7 @@ mod serde_helpers {
         D: Deserializer<'de>,
     {
         let val = serde_json::Value::deserialize(deserializer)?;
-    
+
         if let serde_json::Value::String(s) = val {
             // case: ABI was returned as a string containing JSON
             serde_json::from_str(&s).map_err(serde::de::Error::custom)
@@ -318,7 +331,6 @@ mod serde_helpers {
             Err(serde::de::Error::custom("invalid ABI format"))
         }
     }
-       
 }
 
 #[cfg(test)]
