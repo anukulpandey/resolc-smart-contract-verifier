@@ -15,11 +15,6 @@ pub async fn verify(
     compilers: &EvmCompilersPool<SolcCompiler>,
     request: VerificationRequest,
 ) -> Result<VerificationResult, Error> {
-    println!(
-        "[verify] Starting verification for contract: compiler_version: {:?}",
-         request.compiler_version
-    );
-
     let to_verify = vec![request.contract];
 
     let results = verify::compile_and_verify(
@@ -34,8 +29,6 @@ pub async fn verify(
         .into_iter()
         .next()
         .expect("we sent exactly one contract to verify");
-
-    println!("[verify] Verification result: {:?}", result);
 
     Ok(result)
 }

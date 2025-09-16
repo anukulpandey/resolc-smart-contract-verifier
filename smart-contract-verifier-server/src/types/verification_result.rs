@@ -137,8 +137,30 @@ fn try_into_source(verifying_contract: VerifyingContract) -> Result<v2::Source, 
         libraries.extend(parse_manually_linked_libraries(runtime_match_));
     }
 
+    // Get the filename from the source_files keys
+    let file_name = if !verifying_contract.sources.is_empty() {
+        // take the first key from the HashMap (the path to the contract)
+        verifying_contract
+            .sources
+            .keys()
+            .next()
+            .cloned()
+            .unwrap_or_else(|| {
+                verifying_contract
+                    .fully_qualified_name
+                    .contract_name()
+                    .to_string()
+            })
+    } else {
+        // fallback to contract name if sources map is empty
+        verifying_contract
+            .fully_qualified_name
+            .contract_name()
+            .to_string()
+    };
+
     let source = v2::Source {
-        file_name: verifying_contract.fully_qualified_name.file_name(),
+        file_name,
         contract_name: verifying_contract.fully_qualified_name.contract_name(),
         compiler_version: verifying_contract.compiler_version,
         compiler_settings: verifying_contract.compiler_settings.to_string(),
@@ -157,6 +179,7 @@ fn try_into_source(verifying_contract: VerifyingContract) -> Result<v2::Source, 
         is_blueprint: verifying_contract.is_blueprint,
         libraries,
     };
+
     Ok(source)
 }
 

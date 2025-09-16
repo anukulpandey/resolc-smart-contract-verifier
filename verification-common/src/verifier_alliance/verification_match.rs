@@ -28,43 +28,12 @@ pub fn verify_creation_code(
     creation_code_artifacts: &CreationCodeArtifacts,
     compilation_artifacts: &CompilationArtifacts,
 ) -> Result<Option<Match>, anyhow::Error> {
-    println!("=== Starting creation code verification ===");
-    println!("On-chain creation code length: {}", on_chain_code.len());
-    println!("Compiled creation code length: {}", compiled_code.len());
-
-    // Print full hex of on-chain code (truncated if too long)
-    if on_chain_code.len() <= 512 {
-        println!("On-chain creation code: 0x{}", hex::encode(on_chain_code));
-    } else {
-        println!(
-            "On-chain creation code (first 256 bytes): 0x{} ... (total {} bytes)",
-            hex::encode(&on_chain_code[..256]),
-            on_chain_code.len()
-        );
-    }
-
-    println!("Compiled creation code: 0x{}", hex::encode(&compiled_code));
-
     let builder = MatchBuilder::new(on_chain_code, compiled_code.clone());
-    if let Some(mut builder) = builder {
-        println!("MatchBuilder created successfully, applying transformations...");
-        
+    if let Some(mut builder) = builder {        
         builder = builder.apply_creation_code_transformations(creation_code_artifacts, compilation_artifacts)?;
-        println!("Transformations applied.");
-        println!("Transformed compiled code length: {}", builder.compiled_code.len());
-        println!("Transformed compiled code (0x): 0x{}", hex::encode(&builder.compiled_code));
-
         let result = builder.verify_and_build();
-        match &result {
-            Some(_) => println!("Creation code verification succeeded!"),
-            None => println!("Creation code verification returned None (failed match)"),
-        }
-        println!("=== Finished creation code verification ===");
         return Ok(result);
     }
-
-    println!("No MatchBuilder could be created, returning None");
-    println!("=== Finished creation code verification ===");
     Ok(None)
 }
 

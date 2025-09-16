@@ -13,22 +13,53 @@ use std::{collections::BTreeMap, path::Path, process::Stdio};
 use tokio::process::Command;
 
 pub async fn compile_using_cli(
-    compiler_path: &Path,
+    compiler_path: &Path, // <-- this is the solc binary
     input: &SolcInput,
 ) -> Result<solc::CompilerOutput, SolcError> {
     println!("anukul is here for compilation");
+
+    // `resolc` binary (can be absolute path if needed)
+    let resolc_bin = "resolc";
+
     let output = {
         let input = &input.0;
         let input_args = types::InputArgs::from(input);
         let input_files = types::InputFiles::try_from_compiler_input(input).await?;
-        Command::new(compiler_path)
-            .args(input_args.build())
-            .args(input_files.build()?)
+
+        // Start with original args from solc
+        let mut solc_args = input_args.build();
+
+        // Remove solc-style optimization flags
+        solc_args.retain(|arg| arg != "--optimize" && arg != "--optimize-runs");
+
+        // Add resolc-style optimization flag
+        solc_args.push("--optimization".to_string());
+        solc_args.push("z".to_string());
+
+        // Files (.sol)
+        let files = input_files.build()?; // e.g. ["/tmp/Flipper.sol"]
+
+        // Construct new arg order for resolc
+        let mut args = Vec::new();
+        args.extend(files.iter().map(|p| p.to_string_lossy().to_string())); // .sol files first
+        args.push("--solc".to_string());
+        args.push(compiler_path.display().to_string()); // actual solc binary
+        args.extend(solc_args.into_iter()); // compiler args
+
+        // Debug print
+        println!(
+            "[compile_using_cli] Running command:\n{} {}",
+            resolc_bin,
+            args.join(" ")
+        );
+
+        Command::new(resolc_bin)
+            .args(&args)
             .stderr(Stdio::piped())
             .stdout(Stdio::piped())
             .output()
             .await
-            .map_err(|err| SolcError::Io(SolcIoError::new(err, compiler_path)))?
+            .map_err(|err| SolcError::Io(SolcIoError::new(err, Path::new(resolc_bin))))?
     };
 
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();

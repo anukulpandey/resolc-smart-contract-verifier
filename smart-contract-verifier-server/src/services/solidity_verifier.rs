@@ -132,6 +132,7 @@ impl SolidityVerifier for SolidityVerifierService {
             verify_response.status().as_str_name(),
             "standard-json",
         );
+        
         Ok(Response::new(verify_response))
     }
 
