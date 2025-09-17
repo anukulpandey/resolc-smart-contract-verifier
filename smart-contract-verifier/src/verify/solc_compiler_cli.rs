@@ -116,11 +116,6 @@ pub async fn compile_using_cli(
         }
     }
 
-    println!(
-        "Processed stdout as JSON:\n{}",
-        serde_json::to_string_pretty(&stdout_json).unwrap()
-    );
-
     let filtered_bytes = serde_json::to_vec(&stdout_json)?;
 
     let compiler_output = if output.stderr.is_empty() {
