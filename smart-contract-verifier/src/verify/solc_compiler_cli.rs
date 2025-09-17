@@ -9,6 +9,7 @@ use foundry_compilers_new::{
     artifacts::solc,
     error::{SolcError, SolcIoError},
 };
+use serde_json::Value;
 use std::{collections::BTreeMap, path::Path, process::Stdio};
 use tokio::process::Command;
 
@@ -18,7 +19,6 @@ pub async fn compile_using_cli(
 ) -> Result<solc::CompilerOutput, SolcError> {
     println!("anukul is here for compilation");
 
-    // `resolc` binary (can be absolute path if needed)
     let resolc_bin = "resolc";
 
     let output = {
@@ -76,8 +76,55 @@ pub async fn compile_using_cli(
     };
 
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+    let mut stdout_json: Value = serde_json::from_slice(&output.stdout)
+        .unwrap_or_else(|_| Value::String(String::from_utf8_lossy(&output.stdout).to_string()));
+
+    if let Value::Object(ref mut map) = stdout_json {
+        if let Some(Value::Object(contracts)) = map.get_mut("contracts") {
+            // Capture main contract bin/runtime for fallback
+            let mut main_bin = String::new();
+            let mut main_bin_runtime = String::new();
+
+            for (_name, contract) in contracts.iter() {
+                if let Value::Object(contract_map) = contract {
+                    if let Some(Value::String(bin)) = contract_map.get("bin") {
+                        main_bin = bin.clone();
+                    }
+                    if let Some(Value::String(bin_runtime)) = contract_map.get("bin-runtime") {
+                        main_bin_runtime = bin_runtime.clone();
+                    }
+                }
+            }
+
+            // Ensure keys exist, use main contract's bin/bin-runtime if missing
+            for (_name, contract) in contracts.iter_mut() {
+                if let Value::Object(contract_map) = contract {
+                    if !contract_map.contains_key("bin") {
+                        contract_map.insert("bin".to_string(), Value::String(main_bin.clone()));
+                    }
+                    if !contract_map.contains_key("bin-runtime") {
+                        contract_map.insert(
+                            "bin-runtime".to_string(),
+                            Value::String(main_bin_runtime.clone()),
+                        );
+                    }
+                    if !contract_map.contains_key("factory-deps") {
+                        contract_map.insert("factory-deps".to_string(), Value::Array(vec![]));
+                    }
+                }
+            }
+        }
+    }
+
+    println!(
+        "Processed stdout as JSON:\n{}",
+        serde_json::to_string_pretty(&stdout_json).unwrap()
+    );
+
+    let filtered_bytes = serde_json::to_vec(&stdout_json)?;
+
     let compiler_output = if output.stderr.is_empty() {
-        let output_json: types::OutputJson = serde_json::from_slice(output.stdout.as_slice())?;
+        let output_json: types::OutputJson = serde_json::from_slice(&filtered_bytes.as_slice())?;
         solc::CompilerOutput::try_from(output_json)?
     } else {
         solc::CompilerOutput {
@@ -86,8 +133,11 @@ pub async fn compile_using_cli(
             contracts: BTreeMap::new(),
         }
     };
+
+    println!("here i am 5");
     Ok(compiler_output)
 }
+
 
 fn compiler_error(message: String) -> solc::error::Error {
     solc::Error {

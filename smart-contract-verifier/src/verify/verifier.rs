@@ -40,8 +40,9 @@ pub async fn compile_and_verify<C: EvmCompiler>(
 ) -> Result<Vec<VerificationResult>, Error> {
     let compilation_result =
         compilation::compile(compilers, compiler_version, compiler_input).await?;
+
+    println!("compilation_result==={:?}",compilation_result);
     let mut verification_results = vec![];
-    // anukul check this function next how it works
     for contract in to_verify {
         verification_results.push(verify_on_chain_contract(contract, &compilation_result)?);
     }
